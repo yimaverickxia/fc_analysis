@@ -36,7 +36,7 @@ class VaspFCAnalyzer(FCAnalyzer):
             atoms=atoms,
             atoms_ideal=atoms_ideal,
             supercell_matrix=supercell_matrix,
-            is_symmetrized=False)
+            is_symmetrized=True)
 
         # force_constants_analyzer.check_translational_invariance()
 
