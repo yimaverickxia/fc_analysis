@@ -8,7 +8,7 @@ import numpy as np
 from phonopy.file_IO import write_FORCE_CONSTANTS
 from phonopy.structure.symmetry import Symmetry
 from fc_analysis.structure_analyzer import StructureAnalyzer
-from fc_analysis.general_tools import get_rotations_cart
+from fc_analysis.symtools import get_rotations_cart
 from fc_analysis.fc_analyzer_base import FCAnalyzerBase
 from fc_analysis.mappings_modifier import MappingsModifier
 

@@ -5,7 +5,7 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
 from fc_analysis.structure_analyzer import StructureAnalyzer
-from fc_analysis.general_tools import get_rotations_cart
+from fc_analysis.symtools import get_rotations_cart
 from fc_analysis.mappings_modifier import MappingsModifier
 
 
