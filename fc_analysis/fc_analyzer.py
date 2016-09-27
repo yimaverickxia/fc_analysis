@@ -222,10 +222,6 @@ class FCAnalyzer(object):
             counter_check += c
         self._counter_check = counter_check
 
-        def get_matrix_std(matrix_average, matrix_average_of_square):
-            matrix_std = matrix_average_of_square - matrix_average ** 2
-            return np.sqrt(matrix_std)
-
         force_constants_symmetrized /= float(nsym)
         force_constants_sd /= float(nsym)
         force_constants_sd = get_matrix_std(
@@ -518,3 +514,10 @@ def get_rotations_cart(atoms):
     rotations_cart = np.array(rotations_cart)
 
     return rotations_cart
+
+
+def get_matrix_std(matrix_mean, matrix_mean_square):
+    matrix_tmp = matrix_mean_square - matrix_mean ** 2
+    matrix_std = np.sqrt(matrix_tmp)
+    return matrix_std
+
