@@ -8,8 +8,9 @@ import numpy as np
 from phonopy.file_IO import write_FORCE_CONSTANTS
 from phonopy.structure.symmetry import Symmetry
 from fc_analysis.structure_analyzer import StructureAnalyzer
-from fc_analysis.general_tools import MappingsInverter, get_rotations_cart
+from fc_analysis.general_tools import get_rotations_cart
 from fc_analysis.fc_analyzer_base import FCAnalyzerBase
+from fc_analysis.mappings_modifier import MappingsModifier
 
 
 class FCSymmetrizerSPG(FCAnalyzerBase):
@@ -27,7 +28,7 @@ class FCSymmetrizerSPG(FCAnalyzerBase):
         rotations_cart = get_rotations_cart(atoms_symmetry)
         mappings = StructureAnalyzer(
             atoms_symmetry).get_mappings_for_symops(prec=symprec)
-        mappings_inv = MappingsInverter().invert_mappings(mappings)
+        mappings_inv = MappingsModifier(mappings).invert_mappings()
 
         print("mappings: Finished.")
         (nsym, natoms) = mappings.shape

@@ -2,12 +2,11 @@
 # -*- coding: utf-8 -*-
 # TODO(ikeda): The function "get_rotations_cart" is not appropriate for this
 #     module.
-# TODO(ikeda): The structure of the variable "force_constants_pair" should be
-#     modified. We want to use numpy functions.
 from __future__ import absolute_import, division, print_function
 import numpy as np
 from fc_analysis.structure_analyzer import StructureAnalyzer
-from fc_analysis.general_tools import MappingsInverter, get_rotations_cart
+from fc_analysis.general_tools import get_rotations_cart
+from fc_analysis.mappings_modifier import MappingsModifier
 
 
 class FCDistributionAnalyzer(object):
@@ -48,7 +47,7 @@ class FCDistributionAnalyzer(object):
         sa = StructureAnalyzer(self._atoms_ideal)
         mappings = sa.get_mappings_for_symops(prec=self._symprec)
         print("mappings: Finished.")
-        mappings_inverse = MappingsInverter().invert_mappings(mappings)
+        mappings_inverse = MappingsModifier(mappings).invert_mappings()
 
         self._mappings = mappings
         self._mappings_inverse = mappings_inverse
