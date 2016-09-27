@@ -11,6 +11,7 @@ from phonopy.structure import spglib
 from phonopy.file_IO import write_FORCE_CONSTANTS
 from phonopy.harmonic.force_constants import symmetrize_force_constants
 from phonopy.structure.cells import Supercell
+from phonopy.structure.symmetry import Symmetry
 from fc_analysis.structure_analyzer import StructureAnalyzer
 
 
@@ -151,7 +152,134 @@ class FCAnalyzer(object):
             )
         self._fc_distribution_analyzer.analyze_fc_distribution(a1, a2, filename)
 
-    def generate_symmetrized_force_constants(self, atoms_symmetry=None, symprec=1e-5):
+    def average_force_constants_spg(self, symprec=1e-5):
+        atoms = self._atoms
+        fc_orig = self._force_constants
+
+        atoms_symmetry = self._atoms_ideal
+
+        symmetry = Symmetry(atoms_symmetry)
+
+        symbols = atoms.get_chemical_symbols()
+        symboltypes = sorted(set(symbols), key=symbols.index)
+
+        rotations_cart = get_rotations_cart(atoms_symmetry)
+        mappings = StructureAnalyzer(
+            atoms_symmetry).get_mappings_for_symops(prec=symprec)
+        mappings_inv = MappingsInverter().invert_mappings(mappings)
+
+        print("mappings: Finished.")
+        (nsym, natoms) = mappings.shape
+        print("nsym: {}".format(nsym))
+        print("natoms: {}".format(natoms))
+
+        fc_mean = np.zeros_like(fc_orig)
+        fc_mean_square = np.zeros_like(fc_orig)
+
+        fc_mean_symbols, fc_mean_square_symbols, fc_std_symbols, counters = (
+            self.initialize_fc_symbols(fc_orig, symboltypes)
+        )
+
+        for (minv, r) in zip(mappings_inv, rotations_cart):
+            for i1 in symmetry.get_independent_atoms():
+                for i2 in range(natoms):
+                    j1 = minv[i1]
+                    j2 = minv[i2]
+                    s1 = symbols[j1]
+                    s2 = symbols[j2]
+
+                    tmp = np.dot(np.dot(r, fc_orig[j1, j2]), r.T)
+                    tmp2 = tmp ** 2
+                    fc_mean[i1, i2] += tmp
+                    fc_mean_square[i1, i2] += tmp2
+
+                    fc_mean_symbols[(s1, s2)][i1, i2] += tmp
+                    fc_mean_square_symbols[(s1, s2)][i1, i2] += tmp2
+
+                    counters[(s1, s2)][i1, i2] += 1
+
+        fc_mean        /= float(len(rotations_cart))
+        fc_mean_square /= float(len(rotations_cart))
+
+        for i1 in symmetry.get_independent_atoms():
+            for i2 in range(natoms):
+                for (key, c) in counters.items():
+                    if c[i1, i2] != 0:
+                        fc_mean_symbols       [key][i1, i2] /= c[i1, i2]
+                        fc_mean_square_symbols[key][i1, i2] /= c[i1, i2]
+                    else:
+                        fc_mean_symbols       [key][i1, i2] = np.nan
+                        fc_mean_square_symbols[key][i1, i2] = np.nan
+
+        ########################################
+        # STD
+        ########################################
+        fc_std = get_matrix_std(fc_mean, fc_mean_square)
+
+        for key in counters.keys():
+            fc_std_symbols[key] = get_matrix_std(
+                fc_mean_symbols[key], fc_mean_square_symbols[key])
+
+        ########################################
+        # Distribution
+        ########################################
+        fc_mean = self.distribute_force_constants_spg(
+            fc_mean, symmetry, rotations_cart, mappings)
+        fc_std = self.distribute_force_constants_spg(
+            fc_std, symmetry, rotations_cart, mappings)
+
+        for key in counters.keys():
+            fc_mean_symbols[key] = self.distribute_force_constants_spg(
+                fc_mean_symbols[key], symmetry, rotations_cart, mappings)
+            fc_std_symbols[key] = self.distribute_force_constants_spg(
+                fc_std_symbols[key], symmetry, rotations_cart, mappings)
+
+        # After the distributions, the signs of SDs can be changed.
+        # However, the signs of SDs have no meaning.
+        # To suppress the meaningless signs, we take the absolute values here.
+        # TODO(ikeda): Consider the meaning of SDs for vectors or tensors.
+        fc_std = np.abs(fc_std)
+        for key in counters.keys():
+            fc_std_symbols[key] = np.abs(fc_std_symbols[key])
+
+        self._force_constants_symmetrized = fc_mean
+        self._force_constants_sd = fc_std
+        self._force_constants_pair = fc_mean_symbols
+        self._force_constants_pair_sd = fc_std_symbols
+
+    @staticmethod
+    def initialize_fc_symbols(fc_orig, symboltypes):
+        natoms = fc_orig.shape[0]
+
+        fc_mean_symbols        = {}
+        fc_mean_square_symbols = {}
+        fc_std_symbols         = {}
+        counters               = {}
+        for s1 in symboltypes:
+            for s2 in symboltypes:
+                fc_mean_symbols       [(s1, s2)] = np.zeros_like(fc_orig)
+                fc_mean_square_symbols[(s1, s2)] = np.zeros_like(fc_orig)
+                fc_std_symbols        [(s1, s2)] = np.zeros_like(fc_orig)
+                counters              [(s1, s2)] = np.zeros((natoms, natoms), dtype=int)
+
+        return fc_mean_symbols, fc_mean_square_symbols, fc_std_symbols, counters
+
+    def distribute_force_constants_spg(self, fc, symmetry, rotations_cart, mappings):
+        fc_distributed = np.zeros_like(fc)
+        natoms = fc_distributed.shape[0]
+        map_atoms = symmetry.get_map_atoms()
+        map_operations = symmetry.get_map_operations()
+        for i in range(natoms):
+            i_equiv = map_atoms[i]
+            iop = map_operations[i]
+            r = rotations_cart[iop]
+            for j in range(natoms):
+                j_equiv = mappings[iop, j]
+                fc_distributed[i, j] = np.dot(np.dot(r.T, fc[i_equiv, j_equiv]), r)
+
+        return fc_distributed
+
+    def generate_symmetrized_force_constants(self, symprec=1e-5):
         # TODO(ikeda): Too long method name
         """Generate symmetrized force constants.
 
@@ -165,8 +293,7 @@ class FCAnalyzer(object):
         symboltypes = sorted(set(symbols), key=symbols.index)
         nsymbols = len(symboltypes)
 
-        if atoms_symmetry is None:
-            atoms_symmetry = self._atoms
+        atoms_symmetry = self._atoms_ideal
 
         # mappings: each index is for the "after" symmetry operations, and
         #     each element is for the "original" positions. 

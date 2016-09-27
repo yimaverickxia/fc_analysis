@@ -5,6 +5,7 @@ from __future__ import (absolute_import, division,
 
 __author__ = "Yuji Ikeda"
 
+import sys
 from phonopy.file_IO import parse_FORCE_CONSTANTS, write_FORCE_CONSTANTS
 from phonopy.interface.vasp import read_vasp
 from fc_analysis.fc_analyzer import FCAnalyzer
@@ -38,17 +39,33 @@ class VaspFCAnalyzer(FCAnalyzer):
             supercell_matrix=supercell_matrix,
             is_symmetrized=True)
 
-        # force_constants_analyzer.check_translational_invariance()
-
-        self.generate_symmetrized_force_constants()
-        self.write_force_constants_symmetrized()
-
 
 def read_supercell_matrix(phonopy_conf):
     from phonopy.cui.settings import PhonopyConfParser
 
     settings = PhonopyConfParser(phonopy_conf, option_list=[]).get_settings()
     return settings.get_supercell_matrix()
+
+
+def run(args):
+    fc_analyzer = VaspFCAnalyzer(
+        force_constants_filename=args.force_constants,
+        poscar=args.poscar,
+        poscar_ideal=args.poscar_ideal,
+        phonopy_conf=args.phonopy_conf,
+    )
+
+    # force_constants_analyzer.check_translational_invariance()
+
+    if args.is_full:
+        fc_analyzer.generate_symmetrized_force_constants()
+    else:
+        fc_analyzer.average_force_constants_spg()
+
+    fc_analyzer.write_force_constants_symmetrized()
+    fc_analyzer.write_force_constants_sd()
+    fc_analyzer.write_force_constants_pair()
+    fc_analyzer.write_force_constants_pair_sd()
 
 
 def main():
@@ -66,6 +83,9 @@ def main():
                         # default="POSCAR_ideal",
                         type=str,
                         help="The filename of POSCAR_ideal.")
+    parser.add_argument('--full', dest='is_full',
+                        action='store_true',
+                        help='Full FC symmetrization.')
     parser.add_argument("--phonopy_conf",
                         # default="POSCAR_ideal",
                         type=str,
@@ -73,11 +93,9 @@ def main():
                         help="The filename of phonopy conf.")
     args = parser.parse_args()
 
-    VaspFCAnalyzer(force_constants_filename=args.force_constants,
-                   poscar=args.poscar,
-                   poscar_ideal=args.poscar_ideal,
-                   phonopy_conf=args.phonopy_conf)
+    print(' '.join(sys.argv))
 
+    run(args)
 
 if __name__ == "__main__":
     main()
