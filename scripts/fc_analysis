@@ -6,11 +6,11 @@ from __future__ import (absolute_import, division,
 __author__ = "Yuji Ikeda"
 
 import sys
-from fc_analysis.vasp_fc_analyzer import VaspFCAnalyzer
+from fc_analysis.vasp_fc_symmetrizer_spg import VaspFCSymmetrizerSPG
 
 
 def run(args):
-    fc_analyzer = VaspFCAnalyzer(
+    fc_analyzer = VaspFCSymmetrizerSPG(
         force_constants_filename=args.force_constants,
         poscar=args.poscar,
         poscar_ideal=args.poscar_ideal,
@@ -20,7 +20,7 @@ def run(args):
     # force_constants_analyzer.check_translational_invariance()
 
     if args.is_full:
-        fc_analyzer.generate_symmetrized_force_constants()
+        fc_analyzer.average_force_constants_spg_full()
     else:
         fc_analyzer.average_force_constants_spg()
 

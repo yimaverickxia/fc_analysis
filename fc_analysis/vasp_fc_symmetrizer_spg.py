@@ -5,12 +5,12 @@ from __future__ import (absolute_import, division,
 
 __author__ = "Yuji Ikeda"
 
-import sys
 from phonopy.file_IO import parse_FORCE_CONSTANTS, write_FORCE_CONSTANTS
 from phonopy.interface.vasp import read_vasp
-from fc_analysis.fc_analyzer import FCAnalyzer
+from fc_analysis.fc_symmetrizer_spg import FCSymmetrizerSPG
 
-class VaspFCAnalyzer(FCAnalyzer):
+
+class VaspFCSymmetrizerSPG(FCSymmetrizerSPG):
     def __init__(self,
                  force_constants_filename=None,
                  poscar=None,
@@ -32,12 +32,12 @@ class VaspFCAnalyzer(FCAnalyzer):
         #     atoms_symmetry)
         # force_constants_analyzer.write_force_constants_pair()
 
-        super(VaspFCAnalyzer, self).__init__(
+        super(VaspFCSymmetrizerSPG, self).__init__(
             force_constants=force_constants,
             atoms=atoms,
             atoms_ideal=atoms_ideal,
             supercell_matrix=supercell_matrix,
-            is_symmetrized=True)
+            is_symmetrized=is_symmetrized)
 
 
 def read_supercell_matrix(phonopy_conf):
